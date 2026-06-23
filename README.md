@@ -115,18 +115,34 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. Configure settings
+### 3. Configure environment variables
 
-Review/edit [rfid_station/settings.py](rfid_station/settings.py) (or override via environment):
+Copy the example env file and fill in your own values — settings are read via `os.environ` in [rfid_station/rfid_station/settings.py](rfid_station/rfid_station/settings.py), so **nothing secret is hardcoded or committed**:
 
-| Setting | Purpose |
+```bash
+cd rfid_station
+cp .env.example .env   # Windows: copy .env.example .env
+```
+
+Then load it before running Django (PowerShell example):
+
+```powershell
+Get-Content .env | ForEach-Object { if ($_ -match '^\s*([^#=]+)=(.*)$') { [Environment]::SetEnvironmentVariable($Matches[1], $Matches[2]) } }
+```
+
+Or use a tool like `django-environ`/`python-dotenv` if you prefer auto-loading.
+
+| Variable | Purpose |
 |---|---|
-| `SECRET_KEY` | Django cryptographic key — **change for production** |
-| `DEBUG` | Set `False` in production |
-| `ALLOWED_HOSTS` | Domains/IPs allowed to serve the app |
-| `DATABASES` | Switch to PostgreSQL for production |
+| `DJANGO_SECRET_KEY` | Django cryptographic key — **always set a real one in production** |
+| `DJANGO_DEBUG` | `True`/`False` — must be `False` in production |
+| `DJANGO_ALLOWED_HOSTS` | Comma-separated domains/IPs allowed to serve the app |
 | `RFID_BRIDGE_TOKEN` | Shared secret the bridge sends as `X-BRIDGE-TOKEN` |
 | `RIDE_COST` | Default fare when a station isn't specified |
+
+`DATABASES` still defaults to SQLite for local dev — swap to PostgreSQL in `settings.py` for production.
+
+`.env` is gitignored — never commit it. [.env.example](rfid_station/.env.example) documents the required keys with placeholder values only.
 
 ### 4. Initialize the database
 

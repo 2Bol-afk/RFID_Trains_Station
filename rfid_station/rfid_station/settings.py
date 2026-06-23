@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -20,12 +21,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-1(&)ro2g2$oi&i#-iiso-!v91s$env+m7^27!@azhfk!4_osv-'
+# ponytail: dev-only fallback so `runserver` works out of the box; always set DJANGO_SECRET_KEY in production
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-dev-only-change-me')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [h for h in os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if h]
 
 
 # Application definition
@@ -142,10 +144,10 @@ CSRF_COOKIE_SECURE = False
 CSRF_COOKIE_HTTPONLY = False
 
 # RFID Bridge settings
-RFID_BRIDGE_TOKEN = 'rfid-bridge-secret-token-2024'
+RFID_BRIDGE_TOKEN = os.environ.get('RFID_BRIDGE_TOKEN', 'rfid-bridge-secret-token-2024')
 
 # Ride cost
-RIDE_COST = 20.00
+RIDE_COST = float(os.environ.get('RIDE_COST', '20.00'))
 
 # Login settings
 LOGIN_URL = '/accounts/login/'
