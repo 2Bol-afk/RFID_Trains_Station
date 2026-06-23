@@ -1,0 +1,382 @@
+{% extends 'cards/base.html' %}
+
+{% block title %}Reports - RFID Payment System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="fas fa-chart-bar"></i> System Reports</h2>
+            <p class="text-muted">Comprehensive analytics and transaction reports</p>
+        </div>
+    </div>
+
+    <!-- Report Type Selector -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-filter"></i> Report Options</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="reportType" class="form-label">Report Type</label>
+                            <select id="reportType" class="form-select" onchange="changeReport()">
+                                <option value="summary" {% if report_type == 'summary' %}selected{% endif %}>Summary Report</option>
+                                <option value="revenue" {% if report_type == 'revenue' %}selected{% endif %}>Revenue Report</option>
+                                <option value="cards" {% if report_type == 'cards' %}selected{% endif %}>Cards Report</option>
+                                <option value="transactions" {% if report_type == 'transactions' %}selected{% endif %}>Transaction History</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="daysFilter" class="form-label">Time Period (Days)</label>
+                            <select id="daysFilter" class="form-select" onchange="changeReport()">
+                                <option value="1" {% if days == 1 %}selected{% endif %}>Last 24 Hours</option>
+                                <option value="7" {% if days == 7 %}selected{% endif %}>Last 7 Days</option>
+                                <option value="30" {% if days == 30 %}selected{% endif %}>Last 30 Days</option>
+                                <option value="90" {% if days == 90 %}selected{% endif %}>Last 90 Days</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Report -->
+    {% if report_type == 'summary' %}
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-credit-card"></i> Card Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h3 class="text-success">{{ data.cards.total }}</h3>
+                            <small class="text-muted">Total Cards</small>
+                        </div>
+                        <div class="col-6">
+                            <h3 class="text-primary">{{ data.cards.active }}</h3>
+                            <small class="text-muted">Active Cards</small>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h4 class="text-warning">{{ data.cards.deactivated }}</h4>
+                            <small class="text-muted">Deactivated</small>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-danger">{{ data.cards.lost }}</h4>
+                            <small class="text-muted">Lost Cards</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-money-bill-wave"></i> Revenue Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h3 class="text-success">₱{{ data.revenue.total_revenue|floatformat:2 }}</h3>
+                            <small class="text-muted">Total Revenue</small>
+                        </div>
+                        <div class="col-6">
+                            <h3 class="text-info">₱{{ data.revenue.total_ride_revenue|floatformat:2 }}</h3>
+                            <small class="text-muted">Ride Revenue</small>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h4 class="text-primary">₱{{ data.revenue.avg_purchase_amount|floatformat:2 }}</h4>
+                            <small class="text-muted">Avg Purchase</small>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-warning">₱{{ data.revenue.avg_reload_amount|floatformat:2 }}</h4>
+                            <small class="text-muted">Avg Reload</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-pie"></i> Transaction Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <h3 class="text-primary">{{ data.transactions.total_count }}</h3>
+                            <small class="text-muted">Total Transactions</small>
+                        </div>
+                        <div class="col-md-3">
+                            <h3 class="text-danger">{{ data.transactions.ride_count }}</h3>
+                            <small class="text-muted">Ride Charges</small>
+                        </div>
+                        <div class="col-md-3">
+                            <h3 class="text-success">{{ data.transactions.purchase_count }}</h3>
+                            <small class="text-muted">Card Purchases</small>
+                        </div>
+                        <div class="col-md-3">
+                            <h3 class="text-info">{{ data.transactions.reload_count }}</h3>
+                            <small class="text-muted">Card Reloads</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Revenue Report -->
+    {% if report_type == 'revenue' %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-line"></i> Revenue Report - Last {{ days }} Days</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-success">₱{{ data.period_totals.total_revenue|floatformat:2 }}</h4>
+                                <small class="text-muted">Total Revenue</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-primary">{{ data.period_totals.total_rides }}</h4>
+                                <small class="text-muted">Total Rides</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-success">{{ data.period_totals.total_purchases }}</h4>
+                                <small class="text-muted">Total Purchases</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-info">{{ data.period_totals.total_reloads }}</h4>
+                                <small class="text-muted">Total Reloads</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if data.daily_breakdown %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Rides</th>
+                                    <th>Purchases</th>
+                                    <th>Reloads</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for day in data.daily_breakdown %}
+                                <tr>
+                                    <td>{{ day.date }}</td>
+                                    <td>₱{{ day.ride_revenue|floatformat:2 }} ({{ day.ride_count }})</td>
+                                    <td>₱{{ day.purchase_revenue|floatformat:2 }} ({{ day.purchase_count }})</td>
+                                    <td>₱{{ day.reload_revenue|floatformat:2 }} ({{ day.reload_count }})</td>
+                                    <td><strong>₱{{ day.total_revenue|floatformat:2 }}</strong></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Cards Report -->
+    {% if report_type == 'cards' %}
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-pie"></i> Card Status Distribution</h5>
+                </div>
+                <div class="card-body">
+                    {% for status, info in data.status_distribution.items %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>{{ info.name }}</span>
+                        <span class="badge bg-primary">{{ info.count }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-bar"></i> Balance Distribution</h5>
+                </div>
+                <div class="card-body">
+                    {% for range_name, count in data.balance_distribution.items %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>₱{{ range_name }}</span>
+                        <span class="badge bg-info">{{ count }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-star"></i> Most Active Cards</h5>
+                </div>
+                <div class="card-body">
+                    {% for card in data.most_active_cards %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <code>{{ card.uid }}</code>
+                        <span class="badge bg-success">{{ card.transaction_count }} transactions</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-crown"></i> Highest Balance Cards</h5>
+                </div>
+                <div class="card-body">
+                    {% for card in data.highest_balance_cards %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <code>{{ card.uid }}</code>
+                        <span class="badge bg-warning">₱{{ card.balance|floatformat:2 }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Transaction History Report -->
+    {% if report_type == 'transactions' %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-history"></i> Transaction History - Last {{ days }} Days</h5>
+                    <small class="text-muted">Total: {{ data.total_count }} transactions</small>
+                </div>
+                <div class="card-body">
+                    {% if data.transactions %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date & Time</th>
+                                    <th>Card UID</th>
+                                    <th>Type</th>
+                                    <th>Amount</th>
+                                    <th>Direction</th>
+                                    <th>Created By</th>
+                                    <th>Note</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transaction in data.transactions %}
+                                <tr>
+                                    <td>{{ transaction.created_at }}</td>
+                                    <td><code>{{ transaction.card_uid }}</code></td>
+                                    <td>
+                                        <span class="badge bg-{% if transaction.type == 'ride' %}danger{% elif transaction.type == 'purchase' %}success{% else %}info{% endif %}">
+                                            {{ transaction.type_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if transaction.amount %}
+                                            ₱{{ transaction.amount }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if transaction.direction %}
+                                            <span class="badge bg-{% if transaction.direction == 'credit' %}success{% elif transaction.direction == 'debit' %}danger{% else %}secondary{% endif %}">
+                                                {{ transaction.direction_display }}
+                                            </span>
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ transaction.created_by|default:"System" }}</td>
+                                    <td>
+                                        {% if transaction.note %}
+                                            <small class="text-muted">{{ transaction.note|truncatechars:50 }}</small>
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                        <p>No transactions found for this period.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Report Footer -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center text-muted">
+                    <small>
+                        <i class="fas fa-clock"></i> Report generated at {{ data.generated_at|default:"now" }}
+                        {% if is_admin %}
+                        <br><i class="fas fa-user-shield"></i> Admin Access
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function changeReport() {
+    const reportType = document.getElementById('reportType').value;
+    const days = document.getElementById('daysFilter').value;
+    const url = new URL(window.location);
+    url.searchParams.set('type', reportType);
+    url.searchParams.set('days', days);
+    window.location.href = url.toString();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,334 @@
+{% extends "cards/base.html" %}
+{% load static %}
+
+{% block title %}Admin Dashboard - RFID Station{% endblock %}
+
+{% block extra_head %}
+<style>
+    .stat-card {
+        transition: transform 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+    }
+    .stat-icon {
+        font-size: 2.5rem;
+        opacity: 0.8;
+    }
+    .recent-transaction {
+        border-left: 4px solid #007bff;
+        padding-left: 15px;
+        margin-bottom: 10px;
+    }
+    .transaction-credit {
+        border-left-color: #28a745;
+    }
+    .transaction-debit {
+        border-left-color: #dc3545;
+    }
+    .transaction-neutral {
+        border-left-color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-tachometer-alt"></i> Admin Dashboard
+            <small class="text-muted">RFID Station Management</small>
+        </h1>
+    </div>
+</div>
+
+<!-- Quick Stats -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card text-center">
+            <div class="card-body">
+                <i class="fas fa-credit-card stat-icon text-primary"></i>
+                <h3 class="mt-2">{{ summary.cards.total }}</h3>
+                <p class="text-muted mb-0">Total Cards</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card text-center">
+            <div class="card-body">
+                <i class="fas fa-check-circle stat-icon text-success"></i>
+                <h3 class="mt-2">{{ summary.cards.active }}</h3>
+                <p class="text-muted mb-0">Active Cards</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card text-center">
+            <div class="card-body">
+                <i class="fas fa-bus stat-icon text-info"></i>
+                <h3 class="mt-2">₱{{ summary.ride_revenue|floatformat:2 }}</h3>
+                <p class="text-muted mb-0">Ride Revenue</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card text-center">
+            <div class="card-body">
+                <i class="fas fa-wallet stat-icon text-warning"></i>
+                <h3 class="mt-2">₱{{ summary.reload_total|floatformat:2 }}</h3>
+                <p class="text-muted mb-0">Total Reloads</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Card Status Breakdown -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-pie"></i> Card Status Distribution</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div class="border rounded p-3">
+                            <h4 class="text-success">{{ cards_by_status.active }}</h4>
+                            <small class="text-muted">Active</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="border rounded p-3">
+                            <h4 class="text-warning">{{ cards_by_status.deactivated }}</h4>
+                            <small class="text-muted">Deactivated</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="border rounded p-3">
+                            <h4 class="text-danger">{{ cards_by_status.lost }}</h4>
+                            <small class="text-muted">Lost</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-bar"></i> Revenue Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6">
+                        <strong>Total Purchases:</strong><br>
+                        <span class="text-primary">₱{{ summary.purchase_total|floatformat:2 }}</span>
+                    </div>
+                    <div class="col-6">
+                        <strong>Total Reloads:</strong><br>
+                        <span class="text-warning">₱{{ summary.reload_total|floatformat:2 }}</span>
+                    </div>
+                </div>
+                <hr>
+                <div class="text-center">
+                    <h4 class="text-success">₱{{ summary.ride_revenue|floatformat:2 }}</h4>
+                    <small class="text-muted">Total Ride Revenue</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Transactions -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-history"></i> Recent Transactions</h5>
+                <a href="{% url 'admin:cards_transaction_changelist' %}" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-external-link-alt"></i> View All
+                </a>
+            </div>
+            <div class="card-body">
+                {% if recent_transactions %}
+                    {% for transaction in recent_transactions %}
+                        <div class="recent-transaction transaction-{{ transaction.direction|default:'neutral' }}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>{{ transaction.get_type_display }}</strong>
+                                    <br>
+                                    <small class="text-muted">
+                                        Card: <code>{{ transaction.card.uid }}</code> | 
+                                        {{ transaction.created_at|date:"M d, Y H:i" }}
+                                        {% if transaction.created_by %}
+                                            | by {{ transaction.created_by.username }}
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                <div class="text-end">
+                                    {% if transaction.amount %}
+                                        <span class="badge bg-{% if transaction.direction == 'credit' %}success{% elif transaction.direction == 'debit' %}danger{% else %}secondary{% endif %}">
+                                            ₱{{ transaction.amount|floatformat:2 }}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">No Amount</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted text-center">No transactions found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reports Section -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-chart-bar"></i> Quick Reports</h5>
+                <a href="{% url 'reports' %}" class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-external-link-alt"></i> Full Reports
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="text-center p-3 border rounded">
+                            <h4 class="text-success">₱{{ summary.ride_revenue|floatformat:2 }}</h4>
+                            <small class="text-muted">Total Ride Revenue</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center p-3 border rounded">
+                            <h4 class="text-primary">{{ summary.cards.total }}</h4>
+                            <small class="text-muted">Total Cards</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center p-3 border rounded">
+                            <h4 class="text-info">{{ summary.cards.active }}</h4>
+                            <small class="text-muted">Active Cards</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center p-3 border rounded">
+                            <h4 class="text-warning">₱{{ summary.reload_total|floatformat:2 }}</h4>
+                            <small class="text-muted">Total Reloads</small>
+                        </div>
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-chart-pie"></i> Card Status Distribution</h6>
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <div class="border rounded p-2">
+                                    <h5 class="text-success mb-1">{{ cards_by_status.active }}</h5>
+                                    <small class="text-muted">Active</small>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="border rounded p-2">
+                                    <h5 class="text-warning mb-1">{{ cards_by_status.deactivated }}</h5>
+                                    <small class="text-muted">Deactivated</small>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="border rounded p-2">
+                                    <h5 class="text-danger mb-1">{{ cards_by_status.lost }}</h5>
+                                    <small class="text-muted">Lost</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-money-bill-wave"></i> Revenue Breakdown</h6>
+                        <div class="row">
+                            <div class="col-6">
+                                <strong>Purchases:</strong><br>
+                                <span class="text-primary">₱{{ summary.purchase_total|floatformat:2 }}</span>
+                            </div>
+                            <div class="col-6">
+                                <strong>Reloads:</strong><br>
+                                <span class="text-warning">₱{{ summary.reload_total|floatformat:2 }}</span>
+                            </div>
+                        </div>
+                        <hr class="my-2">
+                        <div class="text-center">
+                            <strong>Total Revenue:</strong><br>
+                            <span class="text-success h5">₱{{ summary.ride_revenue|floatformat:2 }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-bolt"></i> Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <a href="{% url 'admin:cards_card_changelist' %}" class="btn btn-outline-primary w-100 mb-2">
+                            <i class="fas fa-credit-card"></i><br>
+                            Manage Cards
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{% url 'admin:cards_transaction_changelist' %}" class="btn btn-outline-info w-100 mb-2">
+                            <i class="fas fa-list"></i><br>
+                            View Transactions
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{% url 'admin:auth_user_changelist' %}" class="btn btn-outline-warning w-100 mb-2">
+                            <i class="fas fa-users"></i><br>
+                            Manage Users
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{% url 'reports' %}" class="btn btn-outline-success w-100 mb-2">
+                            <i class="fas fa-chart-bar"></i><br>
+                            View Reports
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Auto-refresh dashboard every 30 seconds
+    setInterval(function() {
+        location.reload();
+    }, 30000);
+    
+    // Add some interactivity
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add click handlers for stat cards
+        document.querySelectorAll('.stat-card').forEach(card => {
+            card.style.cursor = 'pointer';
+            card.addEventListener('click', function() {
+                // Could add drill-down functionality here
+                console.log('Stat card clicked');
+            });
+        });
+    });
+</script>
+{% endblock %}

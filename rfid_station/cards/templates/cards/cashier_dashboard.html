@@ -1,0 +1,234 @@
+{% extends 'cards/base.html' %}
+
+{% block title %}Cashier Dashboard - RFID Payment System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="fas fa-tachometer-alt"></i> Cashier Dashboard</h2>
+            <p class="text-muted">Overview of today's activities and recent transactions</p>
+        </div>
+    </div>
+
+    <!-- Today's Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                    <h3 class="card-title">{{ today_summary.total_transactions }}</h3>
+                    <p class="card-text">Today's Transactions</p>
+                    <i class="fas fa-chart-line fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <h3 class="card-title">₱{{ today_summary.total_revenue|floatformat:2 }}</h3>
+                    <p class="card-text">Today's Revenue</p>
+                    <i class="fas fa-money-bill-wave fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body text-center">
+                    <h3 class="card-title">{{ today_summary.ride_transactions }}</h3>
+                    <p class="card-text">Rides Today</p>
+                    <i class="fas fa-bus fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body text-center">
+                    <h3 class="card-title">{{ today_summary.purchase_transactions }}</h3>
+                    <p class="card-text">Cards Sold</p>
+                    <i class="fas fa-credit-card fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card Status Overview -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-credit-card"></i> Card Status Overview</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="border-end">
+                                <h4 class="text-success">{{ cards_by_status.active }}</h4>
+                                <small class="text-muted">Active Cards</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="border-end">
+                                <h4 class="text-warning">{{ cards_by_status.deactivated }}</h4>
+                                <small class="text-muted">Deactivated</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <h4 class="text-danger">{{ cards_by_status.lost }}</h4>
+                            <small class="text-muted">Lost Cards</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-pie"></i> Today's Activity Breakdown</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="border-end">
+                                <h4 class="text-primary">{{ today_summary.ride_transactions }}</h4>
+                                <small class="text-muted">Ride Charges</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="border-end">
+                                <h4 class="text-success">{{ today_summary.purchase_transactions }}</h4>
+                                <small class="text-muted">Card Purchases</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <h4 class="text-info">{{ today_summary.reload_transactions }}</h4>
+                            <small class="text-muted">Card Reloads</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Today's Transactions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-clock"></i> Today's Recent Transactions</h5>
+                    <a href="{% url 'reports' %}?type=transactions&days=1" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-external-link-alt"></i> View All Today
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if today_transactions %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Card UID</th>
+                                        <th>Type</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for transaction in today_transactions %}
+                                    <tr>
+                                        <td>{{ transaction.created_at|time:"H:i" }}</td>
+                                        <td><code>{{ transaction.card.uid }}</code></td>
+                                        <td>
+                                            <span class="badge bg-{% if transaction.type == 'ride' %}danger{% elif transaction.type == 'purchase' %}success{% else %}info{% endif %}">
+                                                {{ transaction.get_type_display }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if transaction.amount %}
+                                                ₱{{ transaction.amount }}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-success">Completed</span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-inbox fa-3x mb-3"></i>
+                            <p>No transactions today yet.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Transactions (All Time) -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-history"></i> Recent Transactions (All Time)</h5>
+                    <a href="{% url 'reports' %}?type=transactions" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-external-link-alt"></i> View All
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if recent_transactions %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Date & Time</th>
+                                        <th>Card UID</th>
+                                        <th>Type</th>
+                                        <th>Amount</th>
+                                        <th>Created By</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for transaction in recent_transactions %}
+                                    <tr>
+                                        <td>{{ transaction.created_at|date:"M d, H:i" }}</td>
+                                        <td><code>{{ transaction.card.uid }}</code></td>
+                                        <td>
+                                            <span class="badge bg-{% if transaction.type == 'ride' %}danger{% elif transaction.type == 'purchase' %}success{% else %}info{% endif %}">
+                                                {{ transaction.get_type_display }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if transaction.amount %}
+                                                ₱{{ transaction.amount }}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if transaction.created_by %}
+                                                {{ transaction.created_by.username }}
+                                            {% else %}
+                                                <span class="text-muted">System</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-inbox fa-3x mb-3"></i>
+                            <p>No transactions found.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

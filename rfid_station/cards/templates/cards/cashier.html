@@ -1,0 +1,805 @@
+{% extends 'cards/base.html' %}
+
+{% block title %}Cashier Interface - RFID Payment System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4><i class="fas fa-cash-register"></i> Cashier Operations</h4>
+                <a href="{% url 'cashier_dashboard' %}" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-tachometer-alt"></i> View Dashboard
+                </a>
+            </div>
+            <div class="card-body">
+                <!-- Card Purchase Section -->
+                <div class="mb-4">
+                    <h5 class="text-primary">Purchase New Card</h5>
+                    <form id="purchaseForm" class="row g-3">
+                        {% csrf_token %}
+                        <div class="col-md-6">
+                            <label for="purchaseUid" class="form-label">RFID UID</label>
+                            <input type="text" class="form-control rfid-input" id="purchaseUid" 
+                                   placeholder="Scan or enter UID" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="initialAmount" class="form-label">Initial Amount</label>
+                            <select class="form-select" id="initialAmount" required>
+                                <option value="">Select amount</option>
+                                <option value="100.00">₱100.00</option>
+                                <option value="200.00">₱200.00</option>
+                                <option value="300.00">₱300.00</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="fas fa-plus"></i> Purchase
+                            </button>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="passengerName" class="form-label">Passenger Name *</label>
+                            <input type="text" class="form-control" id="passengerName" 
+                                   placeholder="Enter passenger name" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="passengerEmail" class="form-label">Passenger Email *</label>
+                            <input type="email" class="form-control" id="passengerEmail" 
+                                   placeholder="Enter passenger email" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="fareCategory" class="form-label">Fare Category *</label>
+                            <select class="form-select" id="fareCategory" required>
+                                <option value="">Select category</option>
+                                <option value="regular">Regular (No discount)</option>
+                                <option value="student">Student (20% discount)</option>
+                                <option value="senior">Senior (25% discount)</option>
+                                <option value="pwd">PWD (20% discount)</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+
+                <hr>
+
+                <!-- Card Reload Section -->
+                <div class="mb-4">
+                    <h5 class="text-success">Reload Existing Card</h5>
+                    <form id="reloadForm" class="row g-3">
+                        {% csrf_token %}
+                        <div class="col-md-6">
+                            <label for="reloadUid" class="form-label">RFID UID</label>
+                            <input type="text" class="form-control rfid-input" id="reloadUid" 
+                                   placeholder="Scan or enter UID" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="reloadAmount" class="form-label">Reload Amount</label>
+                            <input type="number" class="form-control" id="reloadAmount" 
+                                   min="1" step="0.01" placeholder="Enter amount" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="submit" class="btn btn-warning w-100">
+                                <i class="fas fa-plus-circle"></i> Reload
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <hr>
+
+                <!-- Card Status Section -->
+                <div class="mb-4">
+                    <h5 class="text-info">Card Status Management</h5>
+                    <form id="statusForm" class="row g-3">
+                        {% csrf_token %}
+                        <div class="col-md-6">
+                            <label for="statusUid" class="form-label">RFID UID</label>
+                            <input type="text" class="form-control rfid-input" id="statusUid" 
+                                   placeholder="Scan or enter UID" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="newStatus" class="form-label">New Status</label>
+                            <select class="form-select" id="newStatus" required>
+                                <option value="">Select status</option>
+                                <option value="active">Activate</option>
+                                <option value="deactivated">Deactivate</option>
+                                <option value="lost">Mark as Lost</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="submit" class="btn btn-info w-100">
+                                <i class="fas fa-edit"></i> Update
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <hr>
+
+                <!-- Fare Category Update Section -->
+                <div class="mb-4">
+                    <h5 class="text-secondary">Fare Category Update</h5>
+                    <form id="fareCategoryForm" class="row g-3">
+                        {% csrf_token %}
+                        <div class="col-md-6">
+                            <label for="fareUid" class="form-label">RFID UID</label>
+                            <input type="text" class="form-control rfid-input" id="fareUid" 
+                                   placeholder="Scan or enter UID" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="newFareCategory" class="form-label">Fare Category</label>
+                            <select class="form-select" id="newFareCategory" required>
+                                <option value="">Select category</option>
+                                <option value="regular">Regular (No discount)</option>
+                                <option value="student">Student (20% discount)</option>
+                                <option value="senior">Senior (25% discount)</option>
+                                <option value="pwd">PWD (20% discount)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="submit" class="btn btn-secondary w-100">
+                                <i class="fas fa-sync-alt"></i> Update
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <hr>
+
+                <!-- Card Update Section -->
+                <div class="mb-4">
+                    <h5 class="text-secondary">Update Card Information</h5>
+                    <form id="updateCardForm" class="row g-3">
+                        {% csrf_token %}
+                        <div class="col-md-6">
+                            <label for="updateUid" class="form-label">RFID UID</label>
+                            <input type="text" class="form-control rfid-input" id="updateUid" 
+                                   placeholder="Scan or enter UID" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="updatePassengerName" class="form-label">Passenger Name</label>
+                            <input type="text" class="form-control" id="updatePassengerName" 
+                                   placeholder="Enter passenger name" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="updatePassengerEmail" class="form-label">Passenger Email</label>
+                            <input type="email" class="form-control" id="updatePassengerEmail" 
+                                   placeholder="Enter passenger email" required>
+                        </div>
+                        <div class="col-md-12">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-edit"></i> Update Card Information
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Station Selection for Ride Simulation -->
+                <div class="mb-4">
+                    <h5 class="text-warning">Station Selection</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="selectedStation" class="form-label">Select Station for Ride Simulation</label>
+                            <select class="form-select" id="selectedStation">
+                                <option value="">Select a station</option>
+                                {% for station in stations %}
+                                <option value="{{ station.id }}" data-cost="{{ station.ride_cost }}">
+                                    {{ station.display_name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Current Ride Cost</label>
+                            <div class="form-control-plaintext" id="currentRideCost">
+                                ₱20.00 (Default)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <!-- Card Information Display -->
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-credit-card"></i> Card Information</h5>
+            </div>
+            <div class="card-body" id="cardInfo">
+                <div class="text-center text-muted">
+                    <i class="fas fa-credit-card fa-3x mb-3"></i>
+                    <p>Scan a card to view information</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6><i class="fas fa-bolt"></i> Quick Actions</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary btn-sm" onclick="checkCardBalance()">
+                        <i class="fas fa-search"></i> Check Balance
+                    </button>
+                    <button class="btn btn-outline-success btn-sm" onclick="simulateRide()">
+                        <i class="fas fa-bus"></i> Simulate Ride
+                    </button>
+                    <button class="btn btn-outline-info btn-sm" onclick="viewReports()">
+                        <i class="fas fa-chart-bar"></i> View Reports
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="clearForms()">
+                        <i class="fas fa-eraser"></i> Clear All
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Transactions -->
+<div class="row mt-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-history"></i> Recent Transactions</h5>
+            </div>
+            <div class="card-body" id="recentTransactions">
+                <div class="text-center text-muted">
+                    <i class="fas fa-history fa-2x mb-2"></i>
+                    <p class="small">No recent transactions</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentCardUid = null;
+
+// Load recent transactions on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadRecentTransactions();
+});
+
+// Purchase Card Form
+document.getElementById('purchaseForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const uid = document.getElementById('purchaseUid').value.trim();
+    const amount = document.getElementById('initialAmount').value;
+    const passengerName = document.getElementById('passengerName').value.trim();
+    const passengerEmail = document.getElementById('passengerEmail').value.trim();
+    const fareCategory = document.getElementById('fareCategory').value;
+    
+    if (!uid || !amount || !passengerName || !passengerEmail || !fareCategory) {
+        showAlert('Please fill in all required fields', 'danger');
+        return;
+    }
+    
+            try {
+            const response = await fetch('/api/cards/purchase/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                            body: JSON.stringify({
+                uid: uid,
+                initial_amount: amount,
+                passenger_name: passengerName,
+                passenger_email: passengerEmail,
+                fare_category: fareCategory
+            })
+            });
+        
+        // Check if response is JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            // If not JSON, get the text to see what's being returned
+            const textResponse = await response.text();
+            console.error('Non-JSON response:', textResponse);
+            showAlert('Server returned invalid response format', 'danger');
+            return;
+        }
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            const discountInfo = fareCategory !== 'regular' ? ` (${fareCategory} discount applied)` : '';
+            showAlert(`Card ${uid} purchased successfully with ₱${amount} for ${passengerName}${discountInfo}`, 'success');
+            displayCardInfo(data);
+            playBeep('success');
+            clearForm('purchaseForm');
+            loadRecentTransactions(); // Refresh recent transactions
+        } else {
+            const message = getErrorMessage(data) || 'Purchase failed';
+            showAlert(message, 'danger');
+            playBeep('error');
+        }
+    } catch (error) {
+        showAlert('Network error: ' + error.message, 'danger');
+        playBeep('error');
+    }
+});
+
+// Reload Card Form
+document.getElementById('reloadForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const uid = document.getElementById('reloadUid').value.trim();
+    const amount = document.getElementById('reloadAmount').value;
+    
+    if (!uid || !amount) {
+        showAlert('Please fill in all fields', 'danger');
+        return;
+    }
+    
+            try {
+            const response = await fetch(`/api/cards/${uid}/reload/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    amount: amount
+                })
+            });
+        
+        // Check if response is JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            // If not JSON, get the text to see what's being returned
+            const textResponse = await response.text();
+            console.error('Non-JSON response:', textResponse);
+            showAlert('Server returned invalid response format', 'danger');
+            return;
+        }
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showAlert(`Card ${uid} reloaded with ₱${amount}`, 'success');
+            displayCardInfo(data);
+            playBeep('success');
+            clearForm('reloadForm');
+            loadRecentTransactions(); // Refresh recent transactions
+        } else {
+            showAlert(data.error || 'Reload failed', 'danger');
+            playBeep('error');
+        }
+    } catch (error) {
+        console.error('Reload error:', error);
+        showAlert('Network error: ' + error.message, 'danger');
+        playBeep('error');
+    }
+});
+
+// Status Update Form
+document.getElementById('statusForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const uid = document.getElementById('statusUid').value.trim();
+    const status = document.getElementById('newStatus').value;
+    
+    if (!uid || !status) {
+        showAlert('Please fill in all fields', 'danger');
+        return;
+    }
+    
+            try {
+            const response = await fetch(`/api/cards/${uid}/status/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    status: status
+                })
+            });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showAlert(`Card ${uid} status updated to ${status}`, 'success');
+            displayCardInfo(data);
+            playBeep('success');
+            clearForm('statusForm');
+        } else {
+            showAlert(data.error || 'Status update failed', 'danger');
+            playBeep('error');
+        }
+    } catch (error) {
+        showAlert('Network error: ' + error.message, 'danger');
+        playBeep('error');
+    }
+});
+
+// Fare Category Update Form
+document.getElementById('fareCategoryForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const uid = document.getElementById('fareUid').value.trim();
+    const fareCategory = document.getElementById('newFareCategory').value;
+    
+    if (!uid || !fareCategory) {
+        showAlert('Please fill in all fields', 'danger');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/cards/${uid}/fare-category/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                fare_category: fareCategory
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showAlert(`Card ${uid} fare category updated to ${fareCategory}`, 'success');
+            displayCardInfo(data);
+            playBeep('success');
+            clearForm('fareCategoryForm');
+            loadRecentTransactions();
+        } else {
+            showAlert(data.error || 'Fare category update failed', 'danger');
+            playBeep('error');
+        }
+    } catch (error) {
+        showAlert('Network error: ' + error.message, 'danger');
+        playBeep('error');
+    }
+});
+
+// Card Update Form
+document.getElementById('updateCardForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const uid = document.getElementById('updateUid').value.trim();
+    const passengerName = document.getElementById('updatePassengerName').value.trim();
+    const passengerEmail = document.getElementById('updatePassengerEmail').value.trim();
+    
+    if (!uid || !passengerName || !passengerEmail) {
+        showAlert('Please fill in all fields', 'danger');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/cards/${uid}/update/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                passenger_name: passengerName,
+                passenger_email: passengerEmail
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showAlert(`Card ${uid} information updated successfully`, 'success');
+            displayCardInfo(data);
+            playBeep('success');
+            clearForm('updateCardForm');
+            loadRecentTransactions();
+        } else {
+            showAlert(data.error || 'Card update failed', 'danger');
+            playBeep('error');
+        }
+    } catch (error) {
+        showAlert('Network error: ' + error.message, 'danger');
+        playBeep('error');
+    }
+});
+
+// Auto-fetch card info when UID is entered
+document.querySelectorAll('.rfid-input').forEach(input => {
+    input.addEventListener('blur', function() {
+        const uid = this.value.trim();
+        if (uid && uid.length > 3) {
+            fetchCardInfo(uid);
+        }
+    });
+});
+
+// Station selection handler
+document.getElementById('selectedStation').addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    const rideCostDisplay = document.getElementById('currentRideCost');
+    
+    if (this.value) {
+        const cost = selectedOption.getAttribute('data-cost');
+        rideCostDisplay.textContent = `₱${cost}`;
+    } else {
+        rideCostDisplay.textContent = '₱20.00 (Default)';
+    }
+});
+
+async function fetchCardInfo(uid) {
+    try {
+        const response = await fetch(`/api/cards/${uid}/balance/`);
+        if (response.ok) {
+            const data = await response.json();
+            displayCardInfo(data);
+            currentCardUid = uid;
+            
+            // Populate update form fields
+            document.getElementById('updateUid').value = uid;
+            document.getElementById('updatePassengerName').value = data.passenger_name || '';
+            document.getElementById('updatePassengerEmail').value = data.passenger_email || '';
+        } else {
+            clearCardInfo();
+        }
+    } catch (error) {
+        console.log('Error fetching card info:', error);
+    }
+}
+
+function displayCardInfo(cardData) {
+    const cardInfoDiv = document.getElementById('cardInfo');
+    const statusClass = `status-${cardData.status}`;
+    
+    let passengerInfo = '';
+    if (cardData.passenger_name || cardData.passenger_email) {
+        passengerInfo = `
+            <p class="mb-2">
+                <strong>Passenger:</strong><br>
+                ${cardData.passenger_name || 'N/A'}<br>
+                <small class="text-muted">${cardData.passenger_email || 'No email'}</small>
+            </p>
+        `;
+    }
+    
+    let fareCategoryInfo = '';
+    if (cardData.fare_category) {
+        const discountText = cardData.fare_category.discount_percentage > 0 ? 
+            ` (${cardData.fare_category.discount_percentage}% discount)` : '';
+        fareCategoryInfo = `
+            <p class="mb-2">
+                <strong>Fare Category:</strong><br>
+                <span class="badge bg-info">${cardData.fare_category.name}${discountText}</span>
+            </p>
+        `;
+    }
+    
+    cardInfoDiv.innerHTML = `
+        <div class="text-center">
+            <h5 class="card-balance ${statusClass}">₱${cardData.balance}</h5>
+            <p class="mb-2">
+                <strong>UID:</strong> ${cardData.uid}<br>
+                <strong>Status:</strong> 
+                <span class="badge bg-${cardData.status === 'active' ? 'success' : cardData.status === 'deactivated' ? 'warning' : 'danger'}">
+                    ${cardData.status}
+                </span>
+            </p>
+            ${passengerInfo}
+            ${fareCategoryInfo}
+            <p class="small text-muted">
+                Can be used: ${cardData.can_be_used ? 'Yes' : 'No'}
+            </p>
+        </div>
+    `;
+}
+
+function clearCardInfo() {
+    document.getElementById('cardInfo').innerHTML = `
+        <div class="text-center text-muted">
+            <i class="fas fa-credit-card fa-3x mb-3"></i>
+            <p>Scan a card to view information</p>
+        </div>
+    `;
+    currentCardUid = null;
+}
+
+async function loadRecentTransactions() {
+    try {
+        const response = await fetch('/api/recent-transactions/');
+        if (response.ok) {
+            const data = await response.json();
+            displayRecentTransactions(data.transactions);
+        } else {
+            console.log('Failed to load recent transactions');
+        }
+    } catch (error) {
+        console.log('Error loading recent transactions:', error);
+    }
+}
+
+function displayRecentTransactions(transactions) {
+    const transactionsDiv = document.getElementById('recentTransactions');
+    
+    if (!transactions || transactions.length === 0) {
+        transactionsDiv.innerHTML = `
+            <div class="text-center text-muted">
+                <i class="fas fa-history fa-2x mb-2"></i>
+                <p class="small">No recent transactions</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '<div class="list-group list-group-flush">';
+    
+    transactions.forEach(transaction => {
+        const date = new Date(transaction.created_at);
+        const timeStr = date.toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: false 
+        });
+        const dateStr = date.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric' 
+        });
+        
+        const typeClass = transaction.type === 'ride' ? 'danger' : 
+                         transaction.type === 'purchase' ? 'success' : 'info';
+        
+        const amountStr = transaction.amount ? `₱${transaction.amount}` : '-';
+        
+        html += `
+            <div class="list-group-item d-flex justify-content-between align-items-center py-2">
+                <div class="flex-grow-1">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <strong><code>${transaction.card_uid}</code></strong>
+                            <br>
+                            <small class="text-muted">${transaction.created_by}</small>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-${typeClass}">${transaction.type_display}</span>
+                            <br>
+                            <small class="text-muted">${dateStr} ${timeStr}</small>
+                        </div>
+                    </div>
+                    <div class="mt-1">
+                        <span class="fw-bold">${amountStr}</span>
+                        ${transaction.note ? `<br><small class="text-muted">${transaction.note}</small>` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    transactionsDiv.innerHTML = html;
+}
+
+function playBeep(type) {
+    // Simple beep sound using audio context
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.value = type === 'success' ? 800 : 400;
+        oscillator.type = 'sine';
+        
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.1);
+    } catch (e) {
+        // Fallback to console beep
+        console.log(type === 'success' ? '✓' : '✗');
+    }
+}
+
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.container');
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
+function getErrorMessage(data) {
+    if (!data) return null;
+    if (typeof data === 'string') return data;
+    if (data.error) return data.error;
+    if (typeof data === 'object') {
+        // Extract first field error, e.g., { uid: ["Card with UID ... already exists"] }
+        const firstKey = Object.keys(data)[0];
+        const value = data[firstKey];
+        if (Array.isArray(value) && value.length > 0) {
+            return `${firstKey}: ${value[0]}`;
+        }
+        if (typeof value === 'string') {
+            return `${firstKey}: ${value}`;
+        }
+    }
+    return null;
+}
+
+function clearForm(formId) {
+    document.getElementById(formId).reset();
+    document.querySelectorAll('.rfid-input').forEach(input => input.focus());
+}
+
+function clearForms() {
+    clearForm('purchaseForm');
+    clearForm('reloadForm');
+    clearForm('statusForm');
+    clearCardInfo();
+}
+
+// Quick action functions
+async function checkCardBalance() {
+    const uid = prompt('Enter card UID:');
+    if (uid) {
+        await fetchCardInfo(uid);
+    }
+}
+
+async function simulateRide() {
+    const uid = prompt('Enter card UID for ride simulation:');
+    if (uid) {
+        const selectedStation = document.getElementById('selectedStation').value;
+        const requestBody = {};
+        
+        if (selectedStation) {
+            requestBody.station_id = selectedStation;
+        }
+        
+        try {
+            const response = await fetch(`/api/cards/${uid}/ride/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                showAlert(`Ride charged successfully. New balance: ₱${data.balance}`, 'success');
+                displayCardInfo(data);
+                playBeep('success');
+                loadRecentTransactions(); // Refresh recent transactions
+            } else {
+                showAlert(data.error || 'Ride charge failed', 'danger');
+                playBeep('error');
+            }
+        } catch (error) {
+            showAlert('Network error: ' + error.message, 'danger');
+            playBeep('error');
+        }
+    }
+}
+
+function viewReports() {
+    window.open('/reports/', '_blank');
+}
+</script>
+{% endblock %}

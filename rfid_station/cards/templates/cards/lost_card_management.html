@@ -1,0 +1,143 @@
+{% extends 'cards/base.html' %}
+
+{% block title %}Lost Card Management - RFID Payment System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="fas fa-exclamation-triangle"></i> Lost Card Management</h2>
+            <p class="text-muted">Deactivate cards for passengers who have lost their RFID cards</p>
+        </div>
+    </div>
+
+    <!-- Search -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-user-search"></i> Search Passenger</h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" class="row g-2">
+                        <div class="col-md-9">
+                            <label for="q" class="form-label">Name or Email</label>
+                            <input type="text" class="form-control" id="q" name="q" placeholder="Type a name or email" value="{{ search_query|default:'' }}">
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100"><i class="fas fa-search"></i> Search</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6><i class="fas fa-info-circle"></i> Instructions</h6>
+                </div>
+                <div class="card-body">
+                    <ol class="small">
+                        <li>Search by passenger name, email, or card UID.</li>
+                        <li>Use the action buttons to mark Lost, Deactivate, or Activate.</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Results -->
+    {% if search_query is not None %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-credit-card"></i> Cards matching "{{ search_query }}"</h5>
+                </div>
+                <div class="card-body">
+                    {% if search_cards %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Card UID</th>
+                                        <th>Passenger</th>
+                                        <th>Balance</th>
+                                        <th>Status</th>
+                                        <th>Created</th>
+                                        <th class="text-end">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for card in search_cards %}
+                                    <tr>
+                                        <td><code>{{ card.uid }}</code></td>
+                                        <td>{{ card.passenger_name }} ({{ card.passenger_email }}){% if card.passenger %} / {{ card.passenger.full_name }}{% endif %}</td>
+                                        <td>₱{{ card.balance }}</td>
+                                        <td>
+                                            <span class="badge bg-{% if card.status == 'active' %}success{% elif card.status == 'deactivated' %}warning{% else %}danger{% endif %}">{{ card.get_status_display }}</span>
+                                        </td>
+                                        <td>{{ card.created_at|date:"M d, Y" }}</td>
+                                        <td class="text-end">
+                                            <div class="btn-group">
+                                                <form method="post" class="me-1" onsubmit="return confirm('Mark card {{ card.uid }} as lost?')">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="mark_lost">
+                                                    <input type="hidden" name="card_uid" value="{{ card.uid }}">
+                                                    <button type="submit" class="btn btn-sm btn-danger" {% if card.status == 'lost' %}disabled{% endif %}>
+                                                        <i class="fas fa-exclamation-triangle"></i> Lost
+                                                    </button>
+                                                </form>
+                                                <form method="post" class="me-1">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="deactivate">
+                                                    <input type="hidden" name="card_uid" value="{{ card.uid }}">
+                                                    <button type="submit" class="btn btn-sm btn-warning" {% if card.status == 'deactivated' %}disabled{% endif %}>
+                                                        <i class="fas fa-ban"></i> Deactivate
+                                                    </button>
+                                                </form>
+                                                <form method="post">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="activate">
+                                                    <input type="hidden" name="card_uid" value="{{ card.uid }}">
+                                                    <button type="submit" class="btn btn-sm btn-success" {% if card.status == 'active' %}disabled{% endif %}>
+                                                        <i class="fas fa-check"></i> Activate
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-search fa-3x mb-3"></i>
+                            <p>No active cards match your search.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function deactivateCard(cardUid, passengerName) {
+    if (confirm(`Are you sure you want to deactivate card ${cardUid} for ${passengerName}?`)) {
+        // Create a form to submit the deactivation
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.innerHTML = `
+            {% csrf_token %}
+            <input type="hidden" name="card_uid" value="${cardUid}">
+            <input type="hidden" name="action" value="deactivate_single">
+        `;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+{% endblock %}

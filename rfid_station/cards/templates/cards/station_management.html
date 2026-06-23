@@ -1,0 +1,208 @@
+{% extends 'cards/base.html' %}
+
+{% block title %}Station Management - RFID Payment System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="fas fa-train"></i> Station Management</h2>
+            <p class="text-muted">Manage train stations and their fare pricing</p>
+        </div>
+    </div>
+
+    <!-- Add New Station -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-plus"></i> Add New Station</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <label for="name" class="form-label">Station Name</label>
+                                <input type="text" class="form-control" id="name" name="name" required>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="code" class="form-label">Station Code</label>
+                                <input type="text" class="form-control" id="code" name="code" required>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="ride_cost" class="form-label">Ride Cost (₱)</label>
+                                <input type="number" class="form-control" id="ride_cost" name="ride_cost" step="0.01" min="0" required>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Status</label>
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="checkbox" id="is_active" name="is_active" checked>
+                                    <label class="form-check-label" for="is_active">
+                                        Active
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">&nbsp;</label>
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-plus"></i> Add Station
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Existing Stations -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-list"></i> Existing Stations</h5>
+                </div>
+                <div class="card-body">
+                    {% if stations %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Station Name</th>
+                                        <th>Code</th>
+                                        <th>Ride Cost</th>
+                                        <th>Status</th>
+                                        <th>Created</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for station in stations %}
+                                    <tr>
+                                        <td>{{ station.name }}</td>
+                                        <td><code>{{ station.code }}</code></td>
+                                        <td>₱{{ station.ride_cost }}</td>
+                                        <td>
+                                            {% if station.is_active %}
+                                                <span class="badge bg-success">Active</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Inactive</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ station.created_at|date:"M d, Y" }}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-info" onclick="editStation({{ station.id }}, '{{ station.name }}', '{{ station.code }}', {{ station.ride_cost }}, {{ station.is_active|yesno:'true,false' }})">
+                                                <i class="fas fa-edit"></i> Edit
+                                            </button>
+                                            <button class="btn btn-sm btn-danger" onclick="deleteStation({{ station.id }}, '{{ station.name }}')">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-train fa-3x mb-3"></i>
+                            <p>No stations found. Add your first station above.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Station Modal -->
+<div class="modal fade" id="editStationModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Station</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" id="editStationForm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="edit">
+                <input type="hidden" name="station_id" id="edit_station_id">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit_name" class="form-label">Station Name</label>
+                        <input type="text" class="form-control" id="edit_name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_code" class="form-label">Station Code</label>
+                        <input type="text" class="form-control" id="edit_code" name="code" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_ride_cost" class="form-label">Ride Cost (₱)</label>
+                        <input type="number" class="form-control" id="edit_ride_cost" name="ride_cost" step="0.01" min="0" required>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="edit_is_active" name="is_active">
+                            <label class="form-check-label" for="edit_is_active">
+                                Active
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Station Modal -->
+<div class="modal fade" id="deleteStationModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Station</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the station "<span id="delete_station_name"></span>"?</p>
+                <p class="text-danger"><small>This action cannot be undone.</small></p>
+            </div>
+            <form method="post" id="deleteStationForm">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="station_id" id="delete_station_id">
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Delete Station</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function editStation(id, name, code, rideCost, isActive) {
+    document.getElementById('edit_station_id').value = id;
+    document.getElementById('edit_name').value = name;
+    document.getElementById('edit_code').value = code;
+    document.getElementById('edit_ride_cost').value = rideCost;
+    document.getElementById('edit_is_active').checked = isActive;
+    
+    new bootstrap.Modal(document.getElementById('editStationModal')).show();
+}
+
+function deleteStation(id, name) {
+    document.getElementById('delete_station_id').value = id;
+    document.getElementById('delete_station_name').textContent = name;
+    
+    new bootstrap.Modal(document.getElementById('deleteStationModal')).show();
+}
+</script>
+{% endblock %}

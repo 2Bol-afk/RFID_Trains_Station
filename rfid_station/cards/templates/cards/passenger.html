@@ -1,0 +1,446 @@
+{% extends 'cards/base.html' %}
+
+{% block title %}Passenger Tap Simulator - RFID Payment System{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header text-center">
+                <h4><i class="fas fa-bus"></i> Passenger Tap Simulator</h4>
+                <p class="mb-0 text-muted">Simulate RFID card tap for ride payment</p>
+            </div>
+            <div class="card-body">
+                <!-- Logout Notification -->
+                {% if request.session.logged_out_from_passenger %}
+                <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Session Cleared:</strong> You have been automatically logged out for security reasons. The passenger interface is a public service.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endif %}
+                
+                <!-- Tap Interface -->
+                <div class="text-center mb-4">
+                    <div class="card border-2 border-dashed p-4 mb-3" id="tapArea">
+                        <i class="fas fa-credit-card fa-4x text-muted mb-3"></i>
+                        <h5>Tap Your Card Here</h5>
+                        <p class="text-muted">Place your RFID card near the reader or enter UID manually</p>
+                    </div>
+                    
+                    <form id="tapForm">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="cardUid" class="form-label">Card UID</label>
+                            <input type="text" class="form-control rfid-input text-center" id="cardUid" 
+                                   placeholder="Scan card or enter UID" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="selectedStation" class="form-label">Select Station</label>
+                            <select class="form-select" id="selectedStation">
+                                <option value="">Select a station</option>
+                                {% for station in stations %}
+                                <option value="{{ station.id }}" data-cost="{{ station.ride_cost }}">
+                                    {{ station.display_name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-lg w-100">
+                            <i class="fas fa-hand-paper"></i> Tap Card
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Ride Cost Display -->
+                <div class="alert alert-info text-center">
+                    <h5 class="mb-1">Ride Cost: <span id="rideCostDisplay">₱20.00</span></h5>
+                    <small id="rideCostNote">Select a station to see specific pricing</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card Information -->
+        <div class="card mt-3" id="cardInfoCard" style="display: none;">
+            <div class="card-header">
+                <h6><i class="fas fa-credit-card"></i> Card Information</h6>
+            </div>
+            <div class="card-body" id="cardInfo">
+                <!-- Card info will be populated here -->
+            </div>
+        </div>
+
+        
+
+        <!-- Transaction Result -->
+        <div class="card mt-3" id="transactionResult" style="display: none;">
+            <div class="card-header">
+                <h6><i class="fas fa-receipt"></i> Transaction Result</h6>
+            </div>
+            <div class="card-body" id="transactionDetails">
+                <!-- Transaction details will be populated here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Instructions -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="fas fa-info-circle"></i> How to Use</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <i class="fas fa-credit-card fa-2x text-primary mb-2"></i>
+                            <h6>1. Scan Card</h6>
+                            <p class="small text-muted">Place your RFID card near the reader or enter the UID manually</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <i class="fas fa-hand-paper fa-2x text-success mb-2"></i>
+                            <h6>2. Tap to Pay</h6>
+                            <p class="small text-muted">Click the "Tap Card" button to process the ride payment</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <i class="fas fa-check-circle fa-2x text-info mb-2"></i>
+                            <h6>3. Get Confirmation</h6>
+                            <p class="small text-muted">View your transaction result and updated card balance</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentCardData = null;
+
+// Tap Form Submission
+document.getElementById('tapForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const uid = document.getElementById('cardUid').value.trim();
+    
+    if (!uid) {
+        showAlert('Please enter a card UID', 'warning');
+        return;
+    }
+    
+    // Show loading state
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    submitBtn.disabled = true;
+    
+    try {
+        // First, get card information
+        const cardResponse = await fetch(`/api/public/cards/${uid}/balance/`);
+        if (!cardResponse.ok) {
+            throw new Error('Card not found');
+        }
+        
+        currentCardData = await cardResponse.json();
+        displayCardInfo(currentCardData);
+        const previousBalance = parseFloat(currentCardData.balance);
+        
+        // Check if card can be used
+        if (!currentCardData.can_be_used) {
+            showAlert(`Card cannot be used. Status: ${currentCardData.status}, Balance: ₱${currentCardData.balance}`, 'danger');
+            playBeep('error');
+            showFeedback('error');
+            return;
+        }
+        
+        // Get selected station
+        const selectedStation = document.getElementById('selectedStation').value;
+        const requestBody = {};
+        if (!selectedStation) {
+            showAlert('Please select a station before tapping.', 'warning');
+            return;
+        }
+        requestBody.station_id = selectedStation;
+        
+        // Process ride charge - use public endpoint for passenger interface
+        const rideResponse = await fetch(`/api/public/cards/${uid}/ride/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify(requestBody)
+        });
+        
+        const rideData = await rideResponse.json();
+        
+        if (rideResponse.ok) {
+            // Success
+            showAlert('Ride payment successful!', 'success');
+            playBeep('success');
+            showFeedback('success');
+            const newBalance = parseFloat(rideData.balance);
+            const chargedAmount = Math.max(0, (previousBalance - newBalance));
+            displayTransactionResult({ ...rideData, _chargedAmount: chargedAmount, _previousBalance: previousBalance }, true);
+            
+            // Update card info
+            currentCardData = rideData;
+            displayCardInfo(currentCardData);
+            // No recent transactions panel; nothing else to update here
+            
+        } else {
+            // Failed
+            showAlert(rideData.error || 'Ride payment failed', 'danger');
+            playBeep('error');
+            showFeedback('error');
+            displayTransactionResult(rideData, false);
+        }
+        
+    } catch (error) {
+        showAlert('Error: ' + error.message, 'danger');
+        playBeep('error');
+        showFeedback('error');
+    } finally {
+        // Reset button
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }
+});
+
+// Auto-fetch card info when UID is entered
+document.getElementById('cardUid').addEventListener('blur', async function() {
+    const uid = this.value.trim();
+    if (uid && uid.length > 3) {
+        try {
+            const response = await fetch(`/api/public/cards/${uid}/balance/`);
+            if (response.ok) {
+                currentCardData = await response.json();
+                displayCardInfo(currentCardData);
+            } else {
+                hideCardInfo();
+            }
+        } catch (error) {
+            console.log('Error fetching card info:', error);
+        }
+    }
+});
+
+function displayCardInfo(cardData) {
+    const cardInfoCard = document.getElementById('cardInfoCard');
+    const cardInfo = document.getElementById('cardInfo');
+    
+    const statusClass = cardData.status === 'active' ? 'success' : 
+                       cardData.status === 'deactivated' ? 'warning' : 'danger';
+    
+    cardInfo.innerHTML = `
+        <div class="row">
+            <div class="col-6">
+                <strong>UID:</strong><br>
+                <code>${cardData.uid}</code>
+            </div>
+            <div class="col-6">
+                <strong>Status:</strong><br>
+                <span class="badge bg-${statusClass}">${cardData.status}</span>
+            </div>
+        </div>
+        <hr>
+        <div class="text-center">
+            <h4 class="card-balance status-${cardData.status}">₱${cardData.balance}</h4>
+            <p class="mb-0">
+                <i class="fas fa-${cardData.can_be_used ? 'check-circle text-success' : 'times-circle text-danger'}"></i>
+                ${cardData.can_be_used ? 'Ready to use' : 'Cannot be used'}
+            </p>
+        </div>
+    `;
+    
+    cardInfoCard.style.display = 'block';
+    
+    
+}
+
+function hideCardInfo() {
+    document.getElementById('cardInfoCard').style.display = 'none';
+    currentCardData = null;
+}
+
+
+function displayTransactionResult(data, success) {
+    const resultCard = document.getElementById('transactionResult');
+    const details = document.getElementById('transactionDetails');
+    
+    if (success) {
+        const charged = (typeof data._chargedAmount === 'number' && !isNaN(data._chargedAmount)) ? data._chargedAmount : 20;
+        const prev = (typeof data._previousBalance === 'number' && !isNaN(data._previousBalance)) ? data._previousBalance : (parseFloat(data.balance) + charged);
+        // Compute expected fare breakdown for display
+        const stationSelect = document.getElementById('selectedStation');
+        const selectedOption = stationSelect && stationSelect.value ? stationSelect.options[stationSelect.selectedIndex] : null;
+        const baseFare = selectedOption ? parseFloat(selectedOption.getAttribute('data-cost')) : 20;
+        const discountPct = (currentCardData && currentCardData.fare_category && currentCardData.fare_category.discount_percentage) ? parseFloat(currentCardData.fare_category.discount_percentage) : 0;
+        const discountAmount = (baseFare * (discountPct / 100));
+        const discountedFare = (baseFare - discountAmount);
+        details.innerHTML = `
+            <div class="alert alert-success">
+                <h6><i class="fas fa-check-circle"></i> Payment Successful!</h6>
+                <div class="mb-2">
+                    <div><strong>Base Fare:</strong> ₱${baseFare.toFixed(2)}</div>
+                    <div><strong>Discount:</strong> ${discountPct.toFixed(2)}% (−₱${discountAmount.toFixed(2)})</div>
+                    <div><strong>Charged:</strong> ₱${charged.toFixed(2)} ${Math.abs(charged - discountedFare) > 0.01 ? `(expected ₱${discountedFare.toFixed(2)})` : ''}</div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-6">
+                        <strong>Previous Balance:</strong><br>
+                        ₱${prev.toFixed(2)}
+                    </div>
+                    <div class="col-6">
+                        <strong>New Balance:</strong><br>
+                        ₱${data.balance}
+                    </div>
+                </div>
+                <hr>
+                <p class="mb-0 small text-muted">
+                    <i class="fas fa-clock"></i> Transaction completed at ${new Date().toLocaleTimeString()}
+                </p>
+            </div>
+        `;
+    } else {
+        details.innerHTML = `
+            <div class="alert alert-danger">
+                <h6><i class="fas fa-times-circle"></i> Payment Failed</h6>
+                <p class="mb-0">${data.error || 'Unable to process payment'}</p>
+            </div>
+        `;
+    }
+    
+    resultCard.style.display = 'block';
+}
+
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.container');
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
+function showFeedback(type) {
+    const tapArea = document.getElementById('tapArea');
+    tapArea.classList.add(type === 'success' ? 'beep-success' : 'beep-error');
+    setTimeout(() => {
+        tapArea.classList.remove('beep-success', 'beep-error');
+    }, 300);
+}
+
+function playBeep(type) {
+    // Create audio context for beep sounds
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        if (type === 'success') {
+            // Success beep: high frequency, short duration
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.2);
+        } else {
+            // Error beep: low frequency, longer duration
+            oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.4);
+        }
+    } catch (error) {
+        // Fallback: use browser's built-in beep
+        console.log('Audio context not supported, using fallback beep');
+        if (type === 'success') {
+            console.log('\a'); // Bell character
+        } else {
+            console.log('\a\a'); // Double bell for error
+        }
+    }
+}
+
+// Clear form and reset state
+function clearAll() {
+    document.getElementById('tapForm').reset();
+    document.getElementById('cardUid').focus();
+    hideCardInfo();
+    hideTransactionHistory();
+    document.getElementById('transactionResult').style.display = 'none';
+    updateRideCostDisplay(); // Reset ride cost display
+}
+
+// Station selection handler
+document.getElementById('selectedStation').addEventListener('change', function() {
+    updateRideCostDisplay();
+});
+
+function updateRideCostDisplay() {
+    const selectedOption = document.getElementById('selectedStation').options[document.getElementById('selectedStation').selectedIndex];
+    const rideCostDisplay = document.getElementById('rideCostDisplay');
+    const rideCostNote = document.getElementById('rideCostNote');
+    
+    if (document.getElementById('selectedStation').value) {
+        const cost = selectedOption.getAttribute('data-cost');
+        rideCostDisplay.textContent = `₱${cost}`;
+        rideCostNote.textContent = `Fare for ${selectedOption.text.split(' - ')[0]}`;
+    } else {
+        rideCostDisplay.textContent = '₱20.00';
+        rideCostNote.textContent = 'Select a station to see specific pricing';
+    }
+}
+
+// Add keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        clearAll();
+    }
+});
+
+// Auto-clear after successful transaction
+setTimeout(() => {
+    if (currentCardData && document.getElementById('transactionResult').style.display !== 'none') {
+        setTimeout(clearAll, 10000); // Clear after 10 seconds
+    }
+}, 1000);
+
+// Clear session flag when page loads to prevent showing logout notification again
+document.addEventListener('DOMContentLoaded', function() {
+    // Clear the session flag via AJAX to prevent showing logout notification again
+    if (document.querySelector('.alert-warning')) {
+        fetch('/api/clear-passenger-session/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            },
+        }).catch(() => {
+            // Ignore errors, this is just for cleanup
+        });
+    }
+});
+</script>
+{% endblock %}
