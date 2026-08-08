@@ -328,13 +328,6 @@ def create_user_groups():
     return cashier_group, admin_group
 
 
-# Auto-create groups when admin is loaded
-try:
-    create_user_groups()
-except Exception as e:
-    print(f"Warning: Could not create user groups: {e}")
-
-
 # Custom admin actions
 @admin.action(description='Mark selected cards as lost')
 def mark_cards_as_lost(modeladmin, request, queryset):

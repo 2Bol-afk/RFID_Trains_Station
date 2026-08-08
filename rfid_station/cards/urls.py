@@ -34,9 +34,8 @@ urlpatterns = [
     path('recent-transactions/', views.recent_transactions, name='recent-transactions'),
     
     # Reports
-    path('reports/', views.ReportsView.as_view(), name='reports'),
+    path('reports/data/', views.ReportsView.as_view(), name='reports-api'),
     
     # System
     path('health/', views.system_health, name='system-health'),
 ]
-

@@ -1,8 +1,7 @@
-Django>=4.2,<5.0
+Django>=5.2,<6.0
 djangorestframework>=3.14.0
 psycopg2-binary>=2.9.0
 django-environ>=0.10.0
 pyserial>=3.5
 requests>=2.31.0
 gunicorn>=21.0.0
-

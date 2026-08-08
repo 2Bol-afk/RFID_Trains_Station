@@ -6,10 +6,17 @@
 {% block extra_head %}
 <style>
     .hero-section {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #031a3d 0%, #06305b 100%);
         color: white;
         padding: 60px 0;
         margin-bottom: 40px;
+    }
+    .hero-logo {
+        width: 132px;
+        height: 132px;
+        border-radius: 28px;
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+        object-fit: cover;
     }
     .feature-card {
         transition: all 0.3s ease;
@@ -46,8 +53,9 @@
 <!-- Hero Section -->
 <div class="hero-section">
     <div class="container text-center">
+        <img class="hero-logo mb-4" src="{% static 'cards/images/rfid-train-station-logo.png' %}" alt="RFID Train Station">
         <h1 class="display-4 mb-4">
-            <i class="fas fa-credit-card"></i> RFID Station
+            RFID Train Station
         </h1>
         <p class="lead mb-4">Reloadable RFID Card Payment System</p>
         <p class="mb-0">Manage your transit payments with ease and security</p>
