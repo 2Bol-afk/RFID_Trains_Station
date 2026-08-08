@@ -1,286 +1,237 @@
-# 🚆 RFID Train Station — Card Payment System
+<p align="center">
+  <img src="docs/assets/rfid-train-station-logo.png" alt="RFID Train Station logo" width="180">
+</p>
 
-> A Django + DRF backend for reloadable RFID transit cards: tap-to-ride fares, cashier/admin workflows, fare discounts, lost-card handling, and live reporting — with a Python bridge that talks directly to a serial RFID reader.
+<h1 align="center">RFID Train Station</h1>
 
-![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
-![Django](https://img.shields.io/badge/Django-4.x-092E20?logo=django&logoColor=white)
-![DRF](https://img.shields.io/badge/REST-Framework-A30000)
-![DB](https://img.shields.io/badge/DB-SQLite%20%7C%20PostgreSQL-336791?logo=postgresql&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-yellow)
+<p align="center">
+  A Django-based transit payment system for reloadable RFID cards, station-aware fares, passenger discounts, card lifecycle management, and operational reporting.
+</p>
 
----
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white" alt="Python 3.11+">
+  <img src="https://img.shields.io/badge/Django-5.2-092E20?logo=django&logoColor=white" alt="Django 5.2">
+  <img src="https://img.shields.io/badge/Django_REST_Framework-3.x-A30000" alt="Django REST Framework">
+  <img src="https://img.shields.io/badge/Database-SQLite%20%7C%20PostgreSQL-336791?logo=postgresql&logoColor=white" alt="SQLite or PostgreSQL">
+  <img src="https://img.shields.io/badge/License-MIT-yellow" alt="MIT License">
+</p>
 
-## 📖 Table of Contents
+## Application preview
 
-- [How It Works](#-how-it-works)
-- [Features](#-features)
-- [Tech Stack](#-tech-stack)
-- [Prerequisites](#-prerequisites)
-- [Installation](#-installation)
-- [Data Model](#-data-model)
-- [Roles & Access](#-roles--access)
-- [API Reference](#-api-reference)
-- [Web Interfaces](#-web-interfaces)
-- [RFID Bridge](#-rfid-bridge-hardware-side)
-- [Fare Logic](#-fare-logic)
-- [Deployment Checklist](#-deployment-checklist)
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <a href="docs/assets/screenshots/home.png"><img src="docs/assets/screenshots/home.png" alt="RFID Train Station home page"></a><br>
+      <strong>Role-based home page</strong>
+    </td>
+    <td width="50%" align="center">
+      <a href="docs/assets/screenshots/passenger.png"><img src="docs/assets/screenshots/passenger.png" alt="Passenger card-tap interface"></a><br>
+      <strong>Passenger tap interface</strong>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <a href="docs/assets/screenshots/cashier.png"><img src="docs/assets/screenshots/cashier.png" alt="Cashier card-management interface"></a><br>
+      <strong>Cashier operations</strong>
+    </td>
+    <td width="50%" align="center">
+      <a href="docs/assets/screenshots/admin-dashboard.png"><img src="docs/assets/screenshots/admin-dashboard.png" alt="Administrator reporting dashboard"></a><br>
+      <strong>Administrator dashboard</strong>
+    </td>
+  </tr>
+</table>
 
----
+## Why this project exists
 
-## 🧠 How It Works
+Transit fare collection needs more than a balance field. A useful system must safely process concurrent taps, apply eligibility-based discounts, preserve an audit trail, separate passenger and staff workflows, and connect physical readers to a web backend.
 
+RFID Train Station demonstrates that complete flow. A serial bridge reads card UIDs from an RFID reader and calls a Django REST API. The API delegates monetary operations to an atomic service layer, records every balance or lifecycle change, and serves dedicated passenger, cashier, and administrator interfaces.
+
+## Core capabilities
+
+- Purchase and reload RFID cards with a recorded transaction history.
+- Charge station-specific fares using database transactions and row locking.
+- Apply regular, student, senior, and PWD fare categories at tap time.
+- Activate, deactivate, and mark cards as lost with neutral audit entries.
+- Provide separate passenger, cashier, administrator, and Django Admin workflows.
+- Generate card, transaction, and revenue reports.
+- Connect a serial/USB RFID reader through a standalone Python bridge.
+- Seed a complete synthetic demo for repeatable development and screenshots.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    Reader[RFID reader] -->|UID over serial| Bridge[Python RFID bridge]
+    Bridge -->|X-BRIDGE-TOKEN| API[Django REST API]
+    Passenger[Passenger UI] --> API
+    Cashier[Cashier UI] --> API
+    Admin[Admin dashboard] --> API
+    API --> Service[CardService]
+    Service --> DB[(SQLite / PostgreSQL)]
+    API --> Reports[ReportService]
+    Reports --> DB
 ```
-┌──────────────┐      serial/USB      ┌────────────────────┐      HTTPS (token auth)      ┌─────────────────────┐
-│  RFID Reader │ ───────────────────▶ │   rfid_bridge.py    │ ────────────────────────────▶ │   Django REST API   │
-│  (turnstile) │     UID over line     │  (Python service)   │   POST /api/cards/{uid}/ride │   (cards app)        │
-└──────────────┘                      └────────────────────┘                                └─────────┬───────────┘
-                                                                                                        │
-                                                                          ┌─────────────────────────────┼─────────────────────────────┐
-                                                                          ▼                              ▼                             ▼
-                                                                  ┌──────────────┐              ┌───────────────┐             ┌────────────────┐
-                                                                  │  Cashier UI  │              │  Admin Panel  │             │  Passenger UI  │
-                                                                  │ purchase/    │              │ stations,     │             │ check balance, │
-                                                                  │ reload cards │              │ users, reports│             │ recent rides   │
-                                                                  └──────────────┘              └───────────────┘             └────────────────┘
-                                                                                                        │
-                                                                                                        ▼
-                                                                                              ┌───────────────────┐
-                                                                                              │  SQLite/Postgres  │
-                                                                                              │ Card · Passenger  │
-                                                                                              │ Transaction · ... │
-                                                                                              └───────────────────┘
-```
 
-1. A passenger taps their card on the **RFID reader** at a turnstile.
-2. The reader streams the card's **UID** over serial; [rfid_bridge.py](rfid_bridge.py) reads it line-by-line.
-3. The bridge calls `GET /api/cards/{uid}/balance/` to confirm the card can be used, then `POST /api/cards/{uid}/ride/`, authenticated with a shared `X-BRIDGE-TOKEN`.
-4. Django deducts the fare **inside a DB transaction with row locking** (no double-charging on concurrent taps), applies any **fare-category discount**, and logs a `Transaction` row.
-5. Cashiers use the **Cashier UI** to sell new cards and reload balances; admins use the **Admin Dashboard** / Django Admin to manage stations, fare categories, and pull reports; passengers can self-check balance/history from a public UI.
+Balance-changing operations live in `CardService`, where `transaction.atomic()` and `select_for_update()` keep the balance update and audit entry together. For real concurrent turnstiles, PostgreSQL is recommended because SQLite does not provide equivalent row-level locking behavior.
 
----
+See [Architecture](docs/ARCHITECTURE.md) for the component map, entity model, ride sequence, and security boundaries.
 
-## ✨ Features
+## Technology stack
 
-| Area | Capability |
+| Area | Technology |
 |---|---|
-| 💳 Cards | Purchase, reload, edit passenger info, all with audit-trail transactions |
-| 🚇 Rides | Station-aware fare deduction on tap, concurrency-safe balance updates |
-| 🏷️ Discounts | Student (20%), Senior (25%), PWD (20%) — applied automatically at tap time |
-| 🔒 Card Lifecycle | Activate / deactivate / mark lost, with neutral audit entries |
-| 👥 Roles | `cashier` and `admin` Django groups, plus staff/superuser |
-| 📊 Reports | Summary, revenue, and card reports + a system health endpoint |
-| 🛠️ Admin | Full Django Admin for Cards, Transactions, Passengers, Stations, Fare Categories |
-| 📡 Hardware Bridge | Lean script bridging a serial RFID reader to the API |
+| Backend | Python, Django 5.2, Django REST Framework |
+| UI | Django templates, Bootstrap 5, JavaScript |
+| Development database | SQLite |
+| Recommended production database | PostgreSQL |
+| Reader integration | pyserial, requests |
+| Browser capture | Selenium, Google Chrome |
+| Production server dependency | Gunicorn |
 
----
+## Quick start
 
-## 🧰 Tech Stack
-
-- **Django 4.x** + **Django REST Framework**
-- **SQLite** for development, **PostgreSQL** recommended for production
-- **Python 3.11+**
-- **pyserial** + **requests** for the hardware bridge
-
----
-
-## ✅ Prerequisites
-
-Before you start, make sure you have:
-
-- [ ] **Python 3.11 or newer** ([python.org](https://www.python.org/downloads/))
-- [ ] **pip** (ships with Python)
-- [ ] **Git** (to clone/manage the repo)
-- [ ] *(Production only)* **PostgreSQL** server + connection credentials
-- [ ] *(Hardware only)* A **serial/USB RFID reader** and its COM port (e.g. `COM3` on Windows, `/dev/ttyUSB0` on Linux)
-
----
-
-## 🚀 Installation
-
-### 1. Create and activate a virtual environment
+### 1. Create an environment and install dependencies
 
 ```bash
+git clone https://github.com/2Bol-afk/RFID_Trains_Station.git
+cd RFID_Trains_Station
 python -m venv .venv
-
-# Windows PowerShell
-.venv\Scripts\Activate.ps1
-
-# macOS/Linux
 source .venv/bin/activate
+pip install -r rfid_station/requirements.txt
 ```
 
-### 2. Install dependencies
+On Windows PowerShell, activate with `.venv\Scripts\Activate.ps1`.
 
-```bash
-pip install -r requirements.txt
-```
-
-### 3. Configure environment variables
-
-Copy the example env file and fill in your own values — settings are read via `os.environ` in [rfid_station/rfid_station/settings.py](rfid_station/rfid_station/settings.py), so **nothing secret is hardcoded or committed**:
+### 2. Configure local environment variables
 
 ```bash
 cd rfid_station
-cp .env.example .env   # Windows: copy .env.example .env
+cp .env.example .env
+set -a
+source .env
+set +a
 ```
 
-Then load it before running Django (PowerShell example):
-
-```powershell
-Get-Content .env | ForEach-Object { if ($_ -match '^\s*([^#=]+)=(.*)$') { [Environment]::SetEnvironmentVariable($Matches[1], $Matches[2]) } }
-```
-
-Or use a tool like `django-environ`/`python-dotenv` if you prefer auto-loading.
+The project reads environment variables directly with `os.environ`; creating `.env` alone does not load it. Use your shell, service manager, or an environment-loading tool in deployment.
 
 | Variable | Purpose |
 |---|---|
-| `DJANGO_SECRET_KEY` | Django cryptographic key — **always set a real one in production** |
-| `DJANGO_DEBUG` | `True`/`False` — must be `False` in production |
-| `DJANGO_ALLOWED_HOSTS` | Comma-separated domains/IPs allowed to serve the app |
-| `RFID_BRIDGE_TOKEN` | Shared secret the bridge sends as `X-BRIDGE-TOKEN` |
-| `RIDE_COST` | Default fare when a station isn't specified |
+| `DJANGO_SECRET_KEY` | Django signing key; required to replace the development fallback |
+| `DJANGO_DEBUG` | Set `False` outside local development |
+| `DJANGO_ALLOWED_HOSTS` | Comma-separated permitted hosts |
+| `RFID_BRIDGE_TOKEN` | Shared token sent by the hardware bridge |
+| `RIDE_COST` | Default fare when no station is supplied |
 
-`DATABASES` still defaults to SQLite for local dev — swap to PostgreSQL in `settings.py` for production.
-
-`.env` is gitignored — never commit it. [.env.example](rfid_station/.env.example) documents the required keys with placeholder values only.
-
-### 4. Initialize the database
+### 3. Initialize and run
 
 ```bash
 python manage.py migrate
-python manage.py createsuperuser
-```
-
-### 5. Run the server
-
-```bash
+python manage.py setup_system --create-users --create-demo-data
 python manage.py runserver
 ```
 
-🎉 Visit `http://localhost:8000/admin/` to log in as your superuser.
+Open `http://127.0.0.1:8000/`.
 
----
+### Local demo accounts
 
-## 🗄️ Data Model
+These credentials are created only when `--create-users` is requested and are intended for local demonstration:
 
-```
-TrainStation ──┐
-               ├──< Transaction >── Card ── FareCategory
-Passenger ─────┘                     │
-                                      └── created_by ── User
-```
-
-- **Card** — UID, balance, status (`active` / `deactivated` / `lost`), linked passenger & fare category.
-- **Passenger** — full contact/demographic record (optional link from Card).
-- **FareCategory** — `regular`, `student`, `senior`, `pwd`, each with a discount %.
-- **TrainStation** — name, code, per-station ride cost.
-- **Transaction** — immutable audit log: type (`purchase`/`ride`/`reload`/`deactivate`/`lost`/`reactivate`), direction (`credit`/`debit`/`neutral`), amount, station, actor.
-
----
-
-## 👤 Roles & Access
-
-| Role | Capabilities |
-|---|---|
-| **Admin** | Everything — reports, station/fare management, card status changes |
-| **Cashier** | Purchase/reload cards, process rides, view balances |
-
-Groups (`cashier`, `admin`) are auto-created on admin app load. Add your staff users to the appropriate group in Django Admin.
-
----
-
-## 🔌 API Reference
-
-All routes are prefixed with `/api/`.
-
-### Cards (cashier/admin)
-
-| Method | Endpoint | Description |
+| Role | Username | Password |
 |---|---|---|
-| `POST` | `/cards/purchase/` | Purchase a new card |
-| `POST` | `/cards/{uid}/reload/` | Reload an existing card |
-| `POST` | `/cards/{uid}/ride/` | Charge a ride (bridge or authenticated user) |
-| `POST` | `/cards/{uid}/status/` | Activate / deactivate / mark lost *(admin only)* |
-| `GET` | `/cards/{uid}/` | Full card detail + transactions |
-| `GET` | `/cards/{uid}/balance/` | Quick balance check |
-| `POST` | `/cards/{uid}/fare-category/` | Update fare category |
-| `POST` | `/cards/{uid}/update/` | Update passenger info |
+| Cashier | `cashier` | `cashier123` |
+| Administrator | `admin` | `admin123` |
 
-### Public (passenger-facing, no login)
+Change or disable these accounts before any shared deployment.
 
-| Method | Endpoint | Description |
+## Roles and interfaces
+
+| Interface | Canonical route | Access |
 |---|---|---|
-| `GET` | `/public/cards/{uid}/balance/` | Public balance check |
-| `GET` | `/public/cards/{uid}/transactions/` | Public recent transactions |
-| `POST` | `/public/cards/{uid}/ride/` | Public ride charge (station required) |
+| Home | `/` | Public |
+| Passenger tap simulator | `/passenger/` | Public demo interface |
+| Cashier operations | `/cashier/` | Cashier group |
+| Cashier dashboard | `/cashier-dashboard/` | Cashier group |
+| Administrator dashboard | `/admin-dashboard/` | Admin group or superuser |
+| Reports | `/reports/` | Cashier or admin |
+| Lost-card management | `/lost-card-management/` | Cashier or admin |
+| Station management | `/station-management/` | Admin |
+| Django Admin | `/admin/` | Django staff permissions |
 
-### Reports & System
+## API overview
 
-| Method | Endpoint | Description |
+Application API routes are available under `/api/`:
+
+| Method | Route | Purpose |
 |---|---|---|
-| `GET` | `/reports/?type=summary\|revenue\|cards` | Operational reports |
-| `GET` | `/health/` | System health *(admin only)* |
+| `POST` | `/api/cards/purchase/` | Issue a new card |
+| `POST` | `/api/cards/{uid}/reload/` | Add card balance |
+| `POST` | `/api/cards/{uid}/ride/` | Process an authenticated or bridge-token ride |
+| `POST` | `/api/cards/{uid}/status/` | Change card lifecycle status |
+| `GET` | `/api/cards/{uid}/balance/` | Staff balance lookup |
+| `GET` | `/api/public/cards/{uid}/balance/` | Public demo balance lookup |
+| `GET` | `/api/reports/data/` | JSON summary, revenue, or card report |
+| `GET` | `/api/health/` | Administrator system health check |
 
----
+See [API reference](docs/API.md) for authentication, request bodies, responses, and the full route list.
 
-## 🖥️ Web Interfaces
+## RFID reader bridge
 
-| Interface | Path |
-|---|---|
-| Cashier UI | `/api/cashier/` |
-| Passenger UI | `/api/passenger/` |
-| Admin Dashboard (custom) | `/api/admin-dashboard/` |
-| Django Admin | `/admin/` |
-
----
-
-## 📡 RFID Bridge (Hardware Side)
-
-[rfid_bridge.py](rfid_bridge.py) reads card UIDs from a serial RFID reader and posts ride charges to the API.
-
-**Requires:** `pyserial`, `requests` (already in [requirements.txt](requirements.txt))
+Run the bridge separately from the Django server:
 
 ```bash
-python rfid_bridge.py --serial COM3 --api-url http://localhost:8000 --token your-bridge-token --ride-cost 20.0
+cd rfid_station
+python rfid_bridge.py \
+  --serial /dev/ttyUSB0 \
+  --api-url http://127.0.0.1:8000 \
+  --token "$RFID_BRIDGE_TOKEN"
 ```
 
-| Flag | Meaning |
-|---|---|
-| `--serial` | Serial port — `COM3` (Windows) or `/dev/ttyUSB0` (Linux) |
-| `--api-url` | Base URL of the Django API |
-| `--token` | Must match `RFID_BRIDGE_TOKEN` in settings |
-| `--ride-cost` | Fallback fare if the API call doesn't resolve a station |
-| `--baudrate` | Serial baud rate (default `9600`) |
+Use a Windows port such as `COM3` when appropriate. Each non-empty serial line is treated as a card UID. See [Hardware bridge](docs/HARDWARE.md) for flags, data flow, logging, and current constraints.
 
-The bridge authenticates every request with an `X-BRIDGE-TOKEN` header and logs activity to both the console and `rfid_bridge.log`.
+## Tests
 
----
+```bash
+cd rfid_station
+python manage.py check
+python manage.py makemigrations --check --dry-run
+python manage.py test -v 2
+```
 
-## 💰 Fare Logic
+The current suite covers deterministic demo setup, template branding, route separation, dashboard revenue rendering, and clean Django startup.
 
-- **Concurrency-safe**: balance changes happen inside DB transactions with row-level locking — no race-condition double charges.
-- **Discounts** apply automatically at tap time based on the card's `FareCategory`:
+## Production considerations
 
-  | Category | Discount |
-  |---|---|
-  | Regular | 0% |
-  | Student | 20% |
-  | Senior | 25% |
-  | PWD | 20% |
+This repository is a portfolio and demonstration system, not a production fare platform. Before deployment:
 
-- **Lost / deactivated cards** can never be charged — status transitions are recorded as neutral (non-monetary) transactions for the audit trail.
+- Replace all development fallback secrets and demo credentials.
+- Set `DJANGO_DEBUG=False`, configure allowed hosts, and serve exclusively over HTTPS.
+- Use PostgreSQL for meaningful row-locking semantics under concurrent taps.
+- Replace shared bridge tokens with rotated credentials and device-level controls.
+- Remove or secure the public ride and transaction-history demo endpoints.
+- Re-enable CSRF enforcement for session-authenticated mutation endpoints.
+- Add rate limiting, tap idempotency, monitoring, backups, and a deployment-specific privacy review.
 
----
+Known boundaries are detailed in [Architecture](docs/ARCHITECTURE.md#security-boundaries-and-current-limitations).
 
-## 🛡️ Deployment Checklist
+## Project team
 
-- [ ] `DEBUG = False`, real `ALLOWED_HOSTS`, fresh `SECRET_KEY`
-- [ ] Switch `DATABASES` to PostgreSQL, then `migrate` + `collectstatic`
-- [ ] Serve over HTTPS with strong admin credentials
-- [ ] Rotate to a strong, secret `RFID_BRIDGE_TOKEN`
+RFID Train Station was developed as a four-person academic team project by:
 
----
+- Roel Sadiang-Abay
+- Lawrence James Paclibar
+- Marco Batollo
+- Dennis Olandio
 
-## 📄 License
+For a personal portfolio, accompany this repository with a short explanation of the modules, decisions, and deliverables you personally owned.
 
-MIT License.
+## Documentation
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [API reference](docs/API.md)
+- [Hardware bridge](docs/HARDWARE.md)
+- [Original project presentation](RFID%20Train%20Station.pptx)
+
+## License
+
+Licensed under the [MIT License](LICENSE).
