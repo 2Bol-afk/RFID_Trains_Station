@@ -413,9 +413,8 @@ def reload_card(uid: str, amount: Decimal, created_by=None):
 
 
 def charge_ride(uid: str, created_by=None):
-    return CardService.charge_ride(uid, created_by)
+    return CardService.charge_ride(uid, created_by=created_by)
 
 
 def update_card_status(uid: str, new_status: str, created_by=None, note=""):
     return CardService.update_card_status(uid, new_status, created_by, note)
-

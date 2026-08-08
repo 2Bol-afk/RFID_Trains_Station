@@ -147,7 +147,6 @@ class RfidBridge:
             
             if not can_be_used:
                 self.logger.warning(f"Card {uid} cannot be used (insufficient balance or inactive)")
-                self.stats['failed_rides'] += 1
                 return
         
         # Attempt to charge the ride
@@ -231,4 +230,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
