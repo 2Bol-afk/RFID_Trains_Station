@@ -214,16 +214,9 @@ This repository is a portfolio and demonstration system, not a production fare p
 
 Known boundaries are detailed in [Architecture](docs/ARCHITECTURE.md#security-boundaries-and-current-limitations).
 
-## Project team
 
-RFID Train Station was developed as a four-person academic team project by:
+RFID Train Station  developed  by:Roel Sadiang-Abay
 
-- Roel Sadiang-Abay
-- Lawrence James Paclibar
-- Marco Batollo
-- Dennis Olandio
-
-For a personal portfolio, accompany this repository with a short explanation of the modules, decisions, and deliverables you personally owned.
 
 ## Documentation
 
