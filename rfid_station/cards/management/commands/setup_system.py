@@ -3,7 +3,7 @@ from django.contrib.auth.models import User, Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from decimal import Decimal
 
-from cards.models import Card, Transaction
+from cards.models import Card, FareCategory, TrainStation, Transaction
 from cards.services import CardService
 
 
@@ -116,6 +116,31 @@ class Command(BaseCommand):
     def create_demo_data(self):
         """Create demo cards and transactions."""
         self.stdout.write('Creating demo data...')
+
+        category_defaults = {
+            'regular': (Decimal('0.00'), 'Standard adult fare'),
+            'student': (Decimal('20.00'), 'Student discounted fare'),
+            'senior': (Decimal('25.00'), 'Senior citizen discounted fare'),
+            'pwd': (Decimal('20.00'), 'PWD discounted fare'),
+        }
+        for name, (discount, description) in category_defaults.items():
+            FareCategory.objects.update_or_create(
+                name=name,
+                defaults={
+                    'discount_percentage': discount,
+                    'description': description,
+                    'is_active': True,
+                },
+            )
+
+        TrainStation.objects.update_or_create(
+            code='CTR',
+            defaults={
+                'name': 'Central Station',
+                'ride_cost': Decimal('20.00'),
+                'is_active': True,
+            },
+        )
         
         # Get or create demo user
         demo_user, created = User.objects.get_or_create(
@@ -132,9 +157,27 @@ class Command(BaseCommand):
         
         # Create demo cards
         demo_cards = [
-            {'uid': 'DEMO001', 'amount': Decimal('200.00')},
-            {'uid': 'DEMO002', 'amount': Decimal('100.00')},
-            {'uid': 'DEMO003', 'amount': Decimal('300.00')},
+            {
+                'uid': 'DEMO001',
+                'amount': Decimal('200.00'),
+                'passenger_name': 'Alex Rivera',
+                'passenger_email': 'alex.rivera@example.com',
+                'fare_category': 'regular',
+            },
+            {
+                'uid': 'DEMO002',
+                'amount': Decimal('100.00'),
+                'passenger_name': 'Jamie Santos',
+                'passenger_email': 'jamie.santos@example.com',
+                'fare_category': 'student',
+            },
+            {
+                'uid': 'DEMO003',
+                'amount': Decimal('300.00'),
+                'passenger_name': 'Morgan Cruz',
+                'passenger_email': 'morgan.cruz@example.com',
+                'fare_category': 'senior',
+            },
         ]
         
         for card_data in demo_cards:
@@ -142,7 +185,10 @@ class Command(BaseCommand):
                 card = CardService.purchase_card(
                     uid=card_data['uid'],
                     initial_amount=card_data['amount'],
-                    created_by=demo_user
+                    created_by=demo_user,
+                    passenger_name=card_data['passenger_name'],
+                    passenger_email=card_data['passenger_email'],
+                    fare_category=card_data['fare_category'],
                 )
                 self.stdout.write(f'  Created card: {card.uid} with ₱{card.balance}')
                 
